@@ -75,8 +75,6 @@ public class OcrService {
         // Configurar Tesseract
         tesseract.setDatapath(tessDataPath);
         tesseract.setLanguage(tessLanguage);
-        tesseract.setPageSegMode(3); // Automatic page segmentation with OSD
-        tesseract.setOcrEngineMode(3); // Neural nets LSTM engine only
 
         logger.info("Configuración Tesseract - Datapath: " + tessDataPath + ", Language: " + tessLanguage);
 
