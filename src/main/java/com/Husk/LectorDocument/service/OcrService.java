@@ -131,7 +131,7 @@ public class OcrService {
         logger.info("Enviando texto a Gemini para análisis");
 
         // Analizar con Gemini
-        return textoFactura;//geminiService.GenerateText(prompt);
+        return geminiService.GenerateText(prompt);
     }
 
     /**
