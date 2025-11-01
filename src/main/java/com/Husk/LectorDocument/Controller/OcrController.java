@@ -2,6 +2,7 @@ package com.Husk.LectorDocument.Controller;
 
 import com.Husk.LectorDocument.service.OcrService;
 import com.Husk.LectorDocument.service.GeminiService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,21 +22,18 @@ public class OcrController {
         this.ocrService = ocrService;
     }
 
-    @PostMapping("/image")
-    public String extractText(@RequestParam("file") MultipartFile file) throws IOException {
-        File tempFile = File.createTempFile("ocr_", file.getOriginalFilename());
-        file.transferTo(tempFile);
-        return ocrService.extractTextFromImage(tempFile.getAbsolutePath());
-    }
-    @GetMapping("/generateText")
-    public String generateText(){
-        return serviceGemini.GenerateText("holaa");
-    }
-    @PostMapping("/setFactura")
-    public String setFactura(@RequestParam("file") MultipartFile file) throws IOException {
-        File tempFile = File.createTempFile("ocr_", file.getOriginalFilename());
-        file.transferTo(tempFile);
-        return ocrService.SetFactura(tempFile.getAbsolutePath());
+    @GetMapping("/test-tesseract")
+    public ResponseEntity<String> testTesseract() {
+        try {
+            File tessdata = new File("/usr/share/tesseract-ocr/4.00/tessdata/spa.traineddata");
+            if (tessdata.exists()) {
+                return ResponseEntity.ok("✅ Tesseract configurado correctamente. Archivo spa.traineddata encontrado.");
+            } else {
+                return ResponseEntity.ok("❌ No se encontró spa.traineddata en: " + tessdata.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            return ResponseEntity.ok("❌ Error: " + e.getMessage());
+        }
     }
 
 }
