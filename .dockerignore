@@ -1,0 +1,12 @@
+target/
+!target/LectorDocument.jar
+.git/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+*.log
+*.tmp
+node_modules/
+.env
+README.md

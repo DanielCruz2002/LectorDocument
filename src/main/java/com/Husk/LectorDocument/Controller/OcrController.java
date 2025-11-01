@@ -1,39 +1,150 @@
 package com.Husk.LectorDocument.Controller;
 
 import com.Husk.LectorDocument.service.OcrService;
-import com.Husk.LectorDocument.service.GeminiService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Logger;
 
 @RestController
 @RequestMapping("/api/ocr")
-@CrossOrigin(origins = "http://localhost:4200/")
+@CrossOrigin(origins = "*")
 public class OcrController {
 
-    private final OcrService ocrService;
-    private final GeminiService serviceGemini;
+    private static final Logger logger = Logger.getLogger(OcrController.class.getName());
 
-    public OcrController(OcrService ocrService, GeminiService serviceGemini) {
-        this.serviceGemini = serviceGemini;
+    private final OcrService ocrService;
+
+    public OcrController(OcrService ocrService) {
         this.ocrService = ocrService;
     }
 
-    @GetMapping("/test-tesseract")
-    public ResponseEntity<String> testTesseract() {
+    /**
+     * Endpoint de salud
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("service", "OCR Service");
+        response.put("tesseract", ocrService.verificarConfiguracion());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Extraer texto de una imagen
+     */
+    @PostMapping("/extract")
+    public ResponseEntity<Map<String, Object>> extractText(
+            @RequestParam("file") MultipartFile file) {
+
+        logger.info("Solicitud de extracción de texto: " + file.getOriginalFilename());
+
+        Map<String, Object> response = new HashMap<>();
+
         try {
-            File tessdata = new File("/usr/share/tesseract-ocr/4.00/tessdata/spa.traineddata");
-            if (tessdata.exists()) {
-                return ResponseEntity.ok("✅ Tesseract configurado correctamente. Archivo spa.traineddata encontrado.");
-            } else {
-                return ResponseEntity.ok("❌ No se encontró spa.traineddata en: " + tessdata.getAbsolutePath());
+            // Validar archivo
+            if (file.isEmpty()) {
+                response.put("success", false);
+                response.put("error", "El archivo está vacío");
+                return ResponseEntity.badRequest().body(response);
             }
+
+            // Validar tipo de archivo
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                response.put("success", false);
+                response.put("error", "El archivo debe ser una imagen");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Extraer texto
+            String texto = ocrService.extractTextFromImage(file);
+
+            response.put("success", true);
+            response.put("filename", file.getOriginalFilename());
+            response.put("text", texto);
+            response.put("textLength", texto.length());
+
+            return ResponseEntity.ok(response);
+
         } catch (Exception e) {
-            return ResponseEntity.ok("❌ Error: " + e.getMessage());
+            logger.severe("Error procesando imagen: " + e.getMessage());
+
+            response.put("success", false);
+            response.put("error", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
+    /**
+     * Procesar una factura con OCR + Gemini
+     */
+    @PostMapping("/factura")
+    public ResponseEntity<Map<String, Object>> procesarFactura(
+            @RequestParam("file") MultipartFile file) {
+
+        logger.info("Solicitud de procesamiento de factura: " + file.getOriginalFilename());
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Validar archivo
+            if (file.isEmpty()) {
+                response.put("success", false);
+                response.put("error", "El archivo está vacío");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Validar tipo de archivo
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                response.put("success", false);
+                response.put("error", "El archivo debe ser una imagen");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Procesar factura
+            String resultado = ocrService.procesarFactura(file);
+
+            response.put("success", true);
+            response.put("filename", file.getOriginalFilename());
+            response.put("analysis", resultado);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.severe("Error procesando factura: " + e.getMessage());
+
+            response.put("success", false);
+            response.put("error", e.getMessage());
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * Verificar configuración del servicio
+     */
+    @GetMapping("/config")
+    public ResponseEntity<Map<String, Object>> verificarConfiguracion() {
+        Map<String, Object> response = new HashMap<>();
+
+        boolean tesseractOk = ocrService.verificarConfiguracion();
+
+        response.put("tesseract", tesseractOk);
+        response.put("status", tesseractOk ? "OK" : "ERROR");
+
+        if (!tesseractOk) {
+            response.put("message", "Tesseract no está configurado correctamente");
+        }
+
+        return ResponseEntity.ok(response);
+    }
 }

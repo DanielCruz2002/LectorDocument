@@ -5,66 +5,146 @@ import net.sourceforge.tess4j.TesseractException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.logging.Logger;
 
 @Service
 public class OcrService {
 
+    private static final Logger logger = Logger.getLogger(OcrService.class.getName());
+
     private final GeminiService geminiService;
 
-    // Permitir configurar la ruta desde application.properties
     @Value("${tesseract.datapath:/usr/share/tesseract-ocr/4.00/tessdata}")
     private String tessDataPath;
+
+    @Value("${tesseract.language:spa}")
+    private String tessLanguage;
 
     public OcrService(GeminiService geminiService) {
         this.geminiService = geminiService;
     }
 
-    public String extractTextFromImage(String imagePath) {
-        Tesseract tesseract = new Tesseract();
+    /**
+     * Extrae texto de una imagen usando Tesseract OCR
+     */
+    public String extractTextFromImage(MultipartFile file) throws IOException {
+        logger.info("Iniciando extracción de texto de imagen: " + file.getOriginalFilename());
+
+        // Crear archivo temporal
+        Path tempFile = Files.createTempFile("ocr-", "-" + file.getOriginalFilename());
 
         try {
-            // Intentar con la ruta configurada
-            tesseract.setDatapath(tessDataPath);
-            tesseract.setLanguage("spa");
+            // Guardar el archivo subido temporalmente
+            file.transferTo(tempFile.toFile());
 
-            File imageFile = new File(imagePath);
-            if (!imageFile.exists()) {
-                throw new RuntimeException("La imagen no existe en: " + imagePath);
-            }
+            // Extraer texto
+            String text = extractTextFromFile(tempFile.toFile());
 
-            String text = tesseract.doOCR(imageFile).trim();
-            System.out.println("OCR exitoso. Texto extraído: " + text.substring(0, Math.min(100, text.length())));
+            logger.info("Texto extraído exitosamente. Longitud: " + text.length());
             return text;
 
         } catch (TesseractException e) {
-            System.err.println("Error Tesseract: " + e.getMessage());
-            System.err.println("Ruta tessdata: " + tessDataPath);
-            System.err.println("Ruta imagen: " + imagePath);
-            throw new RuntimeException("Error al procesar imagen con Tesseract: " + e.getMessage(), e);
+            logger.severe("Error en Tesseract: " + e.getMessage());
+            throw new IOException("Error al procesar imagen con OCR: " + e.getMessage(), e);
+        } finally {
+            // Eliminar archivo temporal
+            try {
+                Files.deleteIfExists(tempFile);
+            } catch (IOException e) {
+                logger.warning("No se pudo eliminar archivo temporal: " + e.getMessage());
+            }
         }
     }
 
+    /**
+     * Extrae texto de un archivo File
+     */
+    public String extractTextFromFile(File file) throws TesseractException {
+        if (!file.exists()) {
+            throw new IllegalArgumentException("El archivo no existe: " + file.getAbsolutePath());
+        }
+
+        Tesseract tesseract = new Tesseract();
+
+        // Configurar Tesseract
+        tesseract.setDatapath(tessDataPath);
+        tesseract.setLanguage(tessLanguage);
+        tesseract.setPageSegMode(1); // Automatic page segmentation with OSD
+        tesseract.setOcrEngineMode(1); // Neural nets LSTM engine only
+
+        logger.info("Configuración Tesseract - Datapath: " + tessDataPath + ", Language: " + tessLanguage);
+
+        // Procesar imagen
+        String text = tesseract.doOCR(file);
+
+        return text != null ? text.trim() : "";
+    }
+
+    /**
+     * Lee un archivo de recursos (como prompts)
+     */
     public String leerArchivoRecurso(String ruta) throws IOException {
+        logger.info("Leyendo archivo de recursos: " + ruta);
+
         try {
-            return new String(new ClassPathResource(ruta).getInputStream().readAllBytes());
+            ClassPathResource resource = new ClassPathResource(ruta);
+            return new String(resource.getInputStream().readAllBytes());
         } catch (IOException e) {
+            logger.severe("Error al leer archivo de recursos: " + ruta);
             throw new IOException("No se pudo leer el recurso: " + ruta, e);
         }
     }
 
-    public String SetFactura(String imagePath) throws IOException {
+    /**
+     * Procesa una factura: extrae texto y lo analiza con Gemini
+     */
+    public String procesarFactura(MultipartFile file) throws IOException {
+        logger.info("Procesando factura: " + file.getOriginalFilename());
+
         // Leer el prompt desde resources
-        String contenido = this.leerArchivoRecurso("Prompts/Facturas.txt");
+        String promptTemplate = leerArchivoRecurso("Prompts/Facturas.txt");
 
-        // Extraer texto de la imagen con OCR
-        String contentFactura = extractTextFromImage(imagePath);
+        // Extraer texto de la imagen
+        String textoFactura = extractTextFromImage(file);
 
-        // Reemplazar placeholder con el contenido extraído
-        String prompt = contenido.replace("<TextOCR>", contentFactura);
+        if (textoFactura.isEmpty()) {
+            throw new IOException("No se pudo extraer texto de la imagen");
+        }
 
-        // Generar respuesta con Gemini
+        // Reemplazar placeholder con el texto extraído
+        String prompt = promptTemplate.replace("<TextOCR>", textoFactura);
+
+        logger.info("Enviando texto a Gemini para análisis");
+
+        // Analizar con Gemini
         return geminiService.GenerateText(prompt);
+    }
+
+    /**
+     * Verifica que Tesseract esté configurado correctamente
+     */
+    public boolean verificarConfiguracion() {
+        try {
+            File tessData = new File(tessDataPath);
+            File langFile = new File(tessDataPath, tessLanguage + ".traineddata");
+
+            boolean dataPathExiste = tessData.exists();
+            boolean langFileExiste = langFile.exists();
+
+            logger.info("Verificación Tesseract:");
+            logger.info("- DataPath existe: " + dataPathExiste + " (" + tessDataPath + ")");
+            logger.info("- Archivo de idioma existe: " + langFileExiste + " (" + langFile.getAbsolutePath() + ")");
+
+            return dataPathExiste && langFileExiste;
+        } catch (Exception e) {
+            logger.severe("Error verificando configuración: " + e.getMessage());
+            return false;
+        }
     }
 }

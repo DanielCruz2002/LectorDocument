@@ -1,8 +1,38 @@
-hola necesito que me leas un texto que es sacado directamente de un texto OCR y que me extraigas y ordenes datos para objeto, el total, el impuesto etc y quiero que me lo entreges algo asi:
-"No.Factura:123-234-345,RTN:0000000000000,total:500,impuesto:600,moneda:LPS" separado por "," y dando valor por ":" no tiene que aver espacios y el contenido debes darmelo sin rodeos, dimelo directamente, una Cosa.. es que si no existe los valores enotces coloca "NULL"
+Eres un asistente experto en análisis de facturas. A continuación se te proporciona el texto extraído de una factura mediante OCR.
 
-acontinuacion el texto OCR:
+Tu tarea es analizar el texto y extraer la siguiente información en formato JSON:
 
+{
+  "numero_factura": "",
+  "fecha": "",
+  "emisor": {
+    "nombre": "",
+    "rtn": "",
+    "direccion": "",
+    "telefono": ""
+  },
+  "receptor": {
+    "nombre": "",
+    "rtn": "",
+    "direccion": ""
+  },
+  "items": [
+    {
+      "descripcion": "",
+      "cantidad": 0,
+      "precio_unitario": 0,
+      "subtotal": 0
+    }
+  ],
+  "subtotal": 0,
+  "impuestos": 0,
+  "total": 0,
+  "metodo_pago": ""
+}
 
+Si algún campo no está presente en el texto, déjalo en blanco o en 0.
 
+TEXTO DE LA FACTURA:
 <TextOCR>
+
+Por favor, analiza el texto anterior y devuelve ÚNICAMENTE el JSON con la información extraída. No agregues explicaciones adicionales.

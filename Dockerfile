@@ -1,66 +1,55 @@
-# Etapa 1: Build con Maven
-FROM maven:3.9-eclipse-temurin-21 AS build
+# Dockerfile simplificado y funcional para Railway
 
-# Configurar variables de entorno para Maven
-ENV MAVEN_OPTS="-Xmx1024m -XX:MaxPermSize=256m"
+# Etapa 1: Build
+FROM eclipse-temurin:21-jdk-jammy AS build
+
+# Instalar Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    apt-get clean
 
 WORKDIR /build
 
-# Copiar archivos de Maven para cachear dependencias
+# Copiar archivos del proyecto
 COPY pom.xml .
 COPY src ./src
 
-# Limpiar cualquier build anterior y construir el proyecto
-RUN mvn clean package -DskipTests -e -X 2>&1 | tee /tmp/maven-build.log || \
-    (cat /tmp/maven-build.log && exit 1)
+# Construir la aplicación
+RUN mvn clean package -DskipTests
 
 # Verificar que el JAR se creó
-RUN ls -lah /build/target/ && \
-    test -f /build/target/*.jar || (echo "ERROR: JAR no encontrado" && exit 1)
+RUN ls -la /build/target/
 
 # Etapa 2: Runtime
 FROM eclipse-temurin:21-jre-jammy
 
-# Instalar Tesseract OCR con idioma español
+# Instalar Tesseract OCR con soporte para español
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         tesseract-ocr \
         tesseract-ocr-spa \
-        libtesseract-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Verificar que Tesseract está instalado correctamente
+# Verificar instalación de Tesseract
 RUN tesseract --version && \
-    ls -la /usr/share/tesseract-ocr/4.00/tessdata/ && \
-    test -f /usr/share/tesseract-ocr/4.00/tessdata/spa.traineddata || \
-    (echo "ERROR: spa.traineddata no encontrado" && exit 1)
-
-# Crear usuario no-root para seguridad
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+    echo "Verificando archivos de idioma..." && \
+    ls -la /usr/share/tesseract-ocr/4.00/tessdata/
 
 WORKDIR /app
 
 # Copiar el JAR desde la etapa de build
-COPY --from=build /build/target/*.jar app.jar
+COPY --from=build /build/target/LectorDocument.jar app.jar
 
 # Crear directorio para archivos temporales
-RUN mkdir -p /tmp/uploads && \
-    chown -R appuser:appuser /app /tmp/uploads
+RUN mkdir -p /tmp/uploads
 
 # Variables de entorno
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/4.00/tessdata
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC"
-
-# Cambiar a usuario no-root
-USER appuser
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
 # Exponer puerto
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
-
-# Comando de inicio
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Ejecutar la aplicación
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
