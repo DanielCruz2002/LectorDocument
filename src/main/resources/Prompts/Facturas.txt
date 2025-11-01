@@ -1,0 +1,8 @@
+hola necesito que me leas un texto que es sacado directamente de un texto OCR y que me extraigas y ordenes datos para objeto, el total, el impuesto etc y quiero que me lo entreges algo asi:
+"No.Factura:123-234-345,RTN:0000000000000,total:500,impuesto:600,moneda:LPS" separado por "," y dando valor por ":" no tiene que aver espacios y el contenido debes darmelo sin rodeos, dimelo directamente, una Cosa.. es que si no existe los valores enotces coloca "NULL"
+
+acontinuacion el texto OCR:
+
+
+
+<TextOCR>
