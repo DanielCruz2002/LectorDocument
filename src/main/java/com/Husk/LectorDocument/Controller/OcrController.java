@@ -87,51 +87,25 @@ public class OcrController {
      * Procesar una factura con OCR + Gemini
      */
     @PostMapping("/factura")
-    public ResponseEntity<Map<String, Object>> procesarFactura(
+    public ResponseEntity<String> procesarFactura(
             @RequestParam("file") MultipartFile file) {
 
         logger.info("Solicitud de procesamiento de factura: " + file.getOriginalFilename());
 
-        Map<String, Object> response = new HashMap<>();
-
         try {
-            // Validar archivo
-            if (file.isEmpty()) {
-                response.put("success", false);
-                response.put("error", "El archivo está vacío");
-                return ResponseEntity.badRequest().body(response);
-            }
-
-            // Validar tipo de archivo
-            String contentType = file.getContentType();
-            if (contentType == null || !contentType.startsWith("image/")) {
-                response.put("success", false);
-                response.put("error", "El archivo debe ser una imagen");
-                return ResponseEntity.badRequest().body(response);
-            }
 
             // Procesar factura
             String resultado = ocrService.procesarFactura(file);
 
-            response.put("success", true);
-            response.put("filename", file.getOriginalFilename());
-            response.put("analysis", resultado);
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(resultado);
 
         } catch (Exception e) {
             logger.severe("Error procesando factura: " + e.getMessage());
-
-            response.put("success", false);
-            response.put("error", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("");
         }
     }
 
-    /**
-     * Verificar configuración del servicio
-     */
+
     @GetMapping("/config")
     public ResponseEntity<Map<String, Object>> verificarConfiguracion() {
         Map<String, Object> response = new HashMap<>();
