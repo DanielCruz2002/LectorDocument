@@ -14,15 +14,25 @@ FROM eclipse-temurin:21-jre-jammy
 
 # Instalar Tesseract OCR y el idioma español
 RUN apt-get update && \
-    apt-get install -y tesseract-ocr tesseract-ocr-spa && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    libtesseract-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verificar instalación de Tesseract
+RUN tesseract --version && \
+    ls -la /usr/share/tesseract-ocr/4.00/tessdata/
 
 # Crear directorio de trabajo
 WORKDIR /app
 
 # Copiar el JAR desde la etapa de build
 COPY --from=build /app/target/*.jar app.jar
+
+# Crear directorio temporal para imágenes
+RUN mkdir -p /tmp/uploads && chmod 777 /tmp/uploads
 
 # Exponer el puerto
 EXPOSE 8080
