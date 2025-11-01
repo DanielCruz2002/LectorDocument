@@ -6,6 +6,10 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 @Service
 public class OcrService {
@@ -18,26 +22,35 @@ public class OcrService {
     public String extractTextFromImage(String imagePath) {
         ITesseract tesseract = new Tesseract();
 
-        // Configura la ruta a los datos de idioma de Tesseract (tessdata)
         try {
-            File tessDataFolder = new ClassPathResource("Tesseract-OCR/tessdata").getFile();
-            tesseract.setDatapath(tessDataFolder.getAbsolutePath());
-        } catch (IOException e) {
-            throw new RuntimeException("No se pudo cargar la carpeta tessdata", e);
-        }
+            // 🔹 Intentamos primero usar la variable de entorno (si está en Docker/Railway)
+            String tessdataPath = System.getenv("TESSDATA_PREFIX");
+            if (tessdataPath != null && !tessdataPath.isEmpty()) {
+                tesseract.setDatapath(tessdataPath);
+            } else {
+                // 🔹 Si no existe, copiamos los datos de tessdata desde resources al sistema temporal
+                Path tempDir = Files.createTempDirectory("tessdata");
+                copyResourceToFile("Tesseract-OCR/tessdata/spa.traineddata",
+                        tempDir.resolve("spa.traineddata").toFile());
+                tesseract.setDatapath(tempDir.toAbsolutePath().toString());
+            }
 
-        // Idioma (por ejemplo, "eng" o "spa")
-        tesseract.setLanguage("spa");
+            tesseract.setLanguage("spa");
 
-        try {
             String text = tesseract.doOCR(new File(imagePath));
-            return text;
+            return text.trim();
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error al preparar los datos de Tesseract: " + e.getMessage(), e);
         } catch (TesseractException e) {
-            e.printStackTrace();
-            return "Error al procesar imagen: " + e.getMessage();
+            throw new RuntimeException("Error al procesar imagen con Tesseract: " + e.getMessage(), e);
         }
     }
-
+    private void copyResourceToFile(String resourcePath, File targetFile) throws IOException {
+        try (InputStream in = new ClassPathResource(resourcePath).getInputStream()) {
+            Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
     public String leerArchivoRecurso(String ruta) throws IOException {
         return new String(new ClassPathResource(ruta).getInputStream().readAllBytes());
     }
