@@ -22,7 +22,7 @@ public class OcrService {
     public String extractTextFromImage(String imagePath) {
         ITesseract tesseract = new Tesseract();
 
-        // 🔹 Usa la variable del entorno establecida en Docker
+        // 🔹 Ruta física del contenedor (configurada en Dockerfile)
         String tessdataPath = System.getenv("TESSDATA_PREFIX");
         if (tessdataPath == null || tessdataPath.isEmpty()) {
             tessdataPath = "/usr/share/tesseract-ocr/4.00/tessdata/";
@@ -37,6 +37,7 @@ public class OcrService {
             throw new RuntimeException("Error al procesar imagen con Tesseract", e);
         }
     }
+
 
 
     private void copyResourceToFile(String resourcePath, File targetFile) throws IOException {
