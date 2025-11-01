@@ -19,7 +19,12 @@ public class OcrService {
         ITesseract tesseract = new Tesseract();
 
         // Configura la ruta a los datos de idioma de Tesseract (tessdata)
-        tesseract.setDatapath("C:\\Program Files\\Tesseract-OCR\\tessdata");
+        try {
+            File tessDataFolder = new ClassPathResource("OCR.Tesseract-OCR/tessdata").getFile();
+            tesseract.setDatapath(tessDataFolder.getAbsolutePath());
+        } catch (IOException e) {
+            throw new RuntimeException("No se pudo cargar la carpeta tessdata", e);
+        }
 
         // Idioma (por ejemplo, "eng" o "spa")
         tesseract.setLanguage("spa");
