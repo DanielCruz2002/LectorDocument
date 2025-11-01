@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class GeminiService {
 
-    @Value("${gemini.key}")
+    @Value("${gemini.api.key}")
     private String geminiKey;
     private String Model = "gemini-2.5-flash";
 
