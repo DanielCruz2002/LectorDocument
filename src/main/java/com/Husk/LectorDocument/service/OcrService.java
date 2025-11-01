@@ -20,7 +20,7 @@ public class OcrService {
 
         // Configura la ruta a los datos de idioma de Tesseract (tessdata)
         try {
-            File tessDataFolder = new ClassPathResource("OCR/Tesseract-OCR/tessdata").getFile();
+            File tessDataFolder = new ClassPathResource("Tesseract-OCR/tessdata").getFile();
             tesseract.setDatapath(tessDataFolder.getAbsolutePath());
         } catch (IOException e) {
             throw new RuntimeException("No se pudo cargar la carpeta tessdata", e);
