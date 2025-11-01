@@ -2,12 +2,17 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copiar archivos de configuración de Maven
+# Copiar archivos de configuración de Maven primero
 COPY pom.xml .
+
+# Descargar dependencias (se cachea esta capa)
+RUN mvn dependency:go-offline -B
+
+# Copiar el código fuente
 COPY src ./src
 
-# Construir la aplicación
-RUN mvn clean package -DskipTests
+# Construir la aplicación con más memoria y sin tests
+RUN mvn clean package -DskipTests -X
 
 # Etapa 2: Runtime
 FROM eclipse-temurin:21-jre-jammy
