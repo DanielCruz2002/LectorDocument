@@ -112,6 +112,10 @@ public class OcrService {
 
         // Extraer texto de la imagen
         String textoFactura = extractTextFromImage(file);
+        textoFactura = textoFactura
+                .replaceAll("[\\r\\n]+", " | ")   // Cambia \r o \n por " | "
+                .replaceAll("\\s{2,}", " ")       // Colapsa espacios múltiples en uno solo
+                .trim();                          // Quita espacios al inicio y final
         logger.info("*********************************************");
         logger.info("*********************************************");
 
