@@ -23,29 +23,23 @@ public class OcrService {
         ITesseract tesseract = new Tesseract();
 
         try {
-            // 🔹 Intentamos primero usar la variable de entorno (si está en Docker/Railway)
-            String tessdataPath = System.getenv("TESSDATA_PREFIX");
-            if (tessdataPath != null && !tessdataPath.isEmpty()) {
-                tesseract.setDatapath(tessdataPath);
-            } else {
-                // 🔹 Si no existe, copiamos los datos de tessdata desde resources al sistema temporal
-                Path tempDir = Files.createTempDirectory("tessdata");
-                copyResourceToFile("Tesseract-OCR/tessdata/spa.traineddata",
-                        tempDir.resolve("spa.traineddata").toFile());
-                tesseract.setDatapath(tempDir.toAbsolutePath().toString());
+            // Extraer spa.traineddata del classpath a un archivo temporal
+            Path tempDir = Files.createTempDirectory("tessdata");
+            try (InputStream in = new ClassPathResource("Tesseract-OCR/tessdata/spa.traineddata").getInputStream()) {
+                Files.copy(in, tempDir.resolve("spa.traineddata"), StandardCopyOption.REPLACE_EXISTING);
             }
 
+            tesseract.setDatapath(tempDir.toAbsolutePath().toString());
             tesseract.setLanguage("spa");
 
-            String text = tesseract.doOCR(new File(imagePath));
-            return text.trim();
+            return tesseract.doOCR(new File(imagePath)).trim();
 
-        } catch (IOException e) {
-            throw new RuntimeException("Error al preparar los datos de Tesseract: " + e.getMessage(), e);
-        } catch (TesseractException e) {
-            throw new RuntimeException("Error al procesar imagen con Tesseract: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Error configurando Tesseract: " + e.getMessage(), e);
         }
     }
+
+    
     private void copyResourceToFile(String resourcePath, File targetFile) throws IOException {
         try (InputStream in = new ClassPathResource(resourcePath).getInputStream()) {
             Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
