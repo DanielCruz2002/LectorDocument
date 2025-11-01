@@ -15,10 +15,9 @@ COPY pom.xml .
 COPY src ./src
 
 # Construir la aplicación
-RUN mvn clean package -DskipTests
-
-# Verificar que el JAR se creó
-RUN ls -la /build/target/
+RUN mvn clean package -DskipTests && \
+    echo "=== Listando archivos generados ===" && \
+    ls -la /build/target/
 
 # Etapa 2: Runtime
 FROM eclipse-temurin:21-jre-jammy
@@ -38,8 +37,13 @@ RUN tesseract --version && \
 
 WORKDIR /app
 
-# Copiar el JAR desde la etapa de build
-COPY --from=build /build/target/LectorDocument.jar app.jar
+# Copiar CUALQUIER JAR que se haya generado y renombrarlo a app.jar
+COPY --from=build /build/target/*.jar app.jar
+
+# Verificar que el JAR existe
+RUN ls -la /app/ && \
+    test -f /app/app.jar && \
+    echo "JAR encontrado correctamente: app.jar"
 
 # Crear directorio para archivos temporales
 RUN mkdir -p /tmp/uploads
@@ -52,4 +56,4 @@ ENV JAVA_OPTS="-Xmx512m -Xms256m"
 EXPOSE 8080
 
 # Ejecutar la aplicación
-CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "echo 'Iniciando aplicación...' && java $JAVA_OPTS -jar /app/app.jar"]
