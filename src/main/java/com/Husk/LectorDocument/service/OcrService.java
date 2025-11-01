@@ -112,7 +112,13 @@ public class OcrService {
 
         // Extraer texto de la imagen
         String textoFactura = extractTextFromImage(file);
+        logger.info("*********************************************");
+        logger.info("*********************************************");
 
+        logger.info(textoFactura);
+
+        logger.info("*********************************************");
+        logger.info("*********************************************");
         if (textoFactura.isEmpty()) {
             throw new IOException("No se pudo extraer texto de la imagen");
         }
