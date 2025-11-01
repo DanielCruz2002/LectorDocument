@@ -20,15 +20,9 @@ public class OcrService {
     }
 
     public String extractTextFromImage(String imagePath) {
-        ITesseract tesseract = new Tesseract();
 
-        // 🔹 Ruta física del contenedor (configurada en Dockerfile)
-        String tessdataPath = System.getenv("TESSDATA_PREFIX");
-        if (tessdataPath == null || tessdataPath.isEmpty()) {
-            tessdataPath = "/usr/share/tesseract-ocr/4.00/tessdata/";
-        }
-
-        tesseract.setDatapath(tessdataPath);
+        Tesseract tesseract = new Tesseract();
+        tesseract.setDatapath("/usr/share/tesseract-ocr/4.00/tessdata"); // Ruta típica en Linux
         tesseract.setLanguage("spa");
 
         try {
